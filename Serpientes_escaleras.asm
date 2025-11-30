@@ -1,6 +1,7 @@
 extern printf
 extern scanf
 extern system
+extern usleep
 
 section .data
     casillas:   times 100 db '.'
@@ -52,6 +53,64 @@ section .data
 
     fmt_char        db "%c", 0
     fmt_int         db "%d", 0
+
+    ;------------------------------------------------
+    ; CARAS DEL DADO ESTILO TABLERO 3x3 (OPCIÓN B)
+    ;------------------------------------------------
+    ; Cara 1
+    dado1 db "┌───┬───┬───┐",10, \
+             "│   │   │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │ ● │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │   │   │",10, \
+             "└───┴───┴───┘",10,0
+
+    ; Cara 2
+    dado2 db "┌───┬───┬───┐",10, \
+             "│ ● │   │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │   │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │   │ ● │",10, \
+             "└───┴───┴───┘",10,0
+
+    ; Cara 3
+    dado3 db "┌───┬───┬───┐",10, \
+             "│ ● │   │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │ ● │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │   │ ● │",10, \
+             "└───┴───┴───┘",10,0
+
+    ; Cara 4
+    dado4 db "┌───┬───┬───┐",10, \
+             "│ ● │   │ ● │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │   │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│ ● │   │ ● │",10, \
+             "└───┴───┴───┘",10,0
+
+    ; Cara 5
+    dado5 db "┌───┬───┬───┐",10, \
+             "│ ● │   │ ● │",10, \
+             "├───┼───┼───┤",10, \
+             "│   │ ● │   │",10, \
+             "├───┼───┼───┤",10, \
+             "│ ● │   │ ● │",10, \
+             "└───┴───┴───┘",10,0
+
+    ; Cara 6
+    dado6 db "┌───┬───┬───┐",10, \
+             "│ ● │   │ ● │",10, \
+             "├───┼───┼───┤",10, \
+             "│ ● │   │ ● │",10, \
+             "├───┼───┼───┤",10, \
+             "│ ● │   │ ● │",10, \
+             "└───┴───┴───┘",10,0
+
 
 section .bss
     num_jugadores   resd 1
@@ -422,9 +481,9 @@ bucle_turnos:
 
 .continuar_turno:
 
-
-
-    ; lanzar dado 1..6 usando rdtsc
+    ;---------------------------------------
+    ; PRIMERO lanzar dado real (1..6)
+    ;---------------------------------------
     rdtsc
     mov     ecx, 6
     xor     edx, edx
@@ -432,7 +491,12 @@ bucle_turnos:
 
     mov     eax, edx
     add     eax, 1
-    mov     [valor_dado], eax
+    mov     [valor_dado], eax     ; guardar cara real del dado
+
+    ;---------------------------------------
+    ; AHORA animar dado usando ese valor
+    ;---------------------------------------
+    call    animar_dado_3x3
 
     ; mover jugador segun ESI
     mov     eax, [valor_dado]
@@ -1524,3 +1588,129 @@ dibujar_tablero:
     leave
     ret
 
+;====================================================
+; animar_dado_3x3 (MODIFICADO)
+;   - Muestra animación
+;   - Finalmente muestra la cara real del dado
+;   - ESPERA ENTER antes de continuar
+;====================================================
+animar_dado_3x3:
+    push    ebp
+    mov     ebp, esp
+    push    ebx
+    push    esi
+    push    edi
+    push    edx
+
+    mov     esi, 6          ; contador de frames = 6
+
+.dado_loop:
+    ; limpiar pantalla
+    push    clear_cmd
+    call    system
+    add     esp, 4
+
+    ; elegir cara aleatoria 1..6 para la animación
+    rdtsc
+    xor     edx, edx
+    mov     ebx, 6
+    div     ebx
+    inc     edx              ; EDx = 1..6
+
+    cmp     edx, 1
+    je      .d1
+    cmp     edx, 2
+    je      .d2
+    cmp     edx, 3
+    je      .d3
+    cmp     edx, 4
+    je      .d4
+    cmp     edx, 5
+    je      .d5
+    jmp     .d6
+
+.d1: push dado1         ; cara 1
+     jmp .show
+.d2: push dado2
+     jmp .show
+.d3: push dado3
+     jmp .show
+.d4: push dado4
+     jmp .show
+.d5: push dado5
+     jmp .show
+.d6: push dado6
+
+.show:
+    call    printf
+    add     esp, 4
+
+    ; pausa corta
+    push    dword 90000
+    call    usleep
+    add     esp, 4
+
+    dec     esi
+    jnz     .dado_loop
+
+
+;====================================================
+; Mostrar la cara FINAL del dado (valor real)
+;====================================================
+
+    ; limpiar pantalla
+    push    clear_cmd
+    call    system
+    add     esp, 4
+
+    ; leer valor real del dado
+    mov     eax, [valor_dado]
+
+    cmp     eax, 1
+    je      .final1
+    cmp     eax, 2
+    je      .final2
+    cmp     eax, 3
+    je      .final3
+    cmp     eax, 4
+    je      .final4
+    cmp     eax, 5
+    je      .final5
+    jmp     .final6
+
+.final1: push dado1
+         jmp .print_final
+.final2: push dado2
+         jmp .print_final
+.final3: push dado3
+         jmp .print_final
+.final4: push dado4
+         jmp .print_final
+.final5: push dado5
+         jmp .print_final
+.final6: push dado6
+
+.print_final:
+    call printf
+    add  esp, 4
+
+    ;=====================================
+    ; ESPERAR ENTER antes de continuar
+    ;=====================================
+    push msg_enter         ; "Presiona ENTER para continuar..."
+    call printf
+    add esp, 4
+
+    ; leer un ENTER real
+    lea eax, [tecla]
+    push eax
+    push fmt_char
+    call scanf
+    add esp, 8
+
+    pop     edx
+    pop     edi
+    pop     esi
+    pop     ebx
+    leave
+    ret
